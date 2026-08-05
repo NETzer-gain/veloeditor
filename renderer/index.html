@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 'unsafe-eval' для AMD-загрузчика Monaco -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; child-src 'self' blob:;">
+  <title>Velocity Text Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <header class="title-bar" id="titleBar">
+    <div class="title-bar-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div class="title-bar-text" id="titleBarText">Velocity Text Editor 1.0.1</div>
+    <div class="title-bar-controls">
+      <button id="minBtn" title="Minimize">−</button>
+      <button id="maxBtn" title="Maximize">□</button>
+      <button id="closeBtn" title="Close">×</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-search">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" placeholder="Search Explorer..." id="searchInput">
+        <button class="refresh-btn" id="refreshBtn" title="Refresh">⟳</button>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-title">FAVOURITES</div>
+        <div class="file-list" id="favoritesList"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-title">FUN SCRIPTS</div>
+        <div class="file-list" id="scriptsList"></div>
+      </div>
+    </aside>
+
+    <div class="workspace" id="workspace">
+      <div class="tabs-bar">
+        <div class="tabs-container" id="tabsContainer"></div>
+        <button class="new-tab-btn" id="newTabBtn" title="New Tab">+</button>
+      </div>
+      <div class="editor-container" id="editorContainer">
+        <div class="empty-state" id="emptyState">
+          <p>You currently don't have any script tabs opened!</p>
+          <p>Click the '+' in the top right to get started.</p>
+        </div>
+      </div>
+      <div class="action-toolbar">
+        <div class="toolbar-left">
+          <button id="btnNew" title="New Tab">➕ New</button>
+          <button id="btnOpen" title="Open File">📂 Open</button>
+          <button id="btnSave" title="Save File">💾 Save</button>
+          <button id="btnClear" title="Clear Editor">✖ Clear</button>
+        </div>
+        <div class="toolbar-center">
+          <select id="fontSelect" title="Font">
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Consolas">Consolas</option>
+          </select>
+          <select id="sizeSelect" title="Size">
+            <option value="12">12</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="18">18</option>
+            <option value="20">20</option>
+            <option value="24">24</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <div class="theme-switcher">
+            <button class="theme-btn" data-theme="light">☀️</button>
+            <button class="theme-btn" data-theme="dark">🌙</button>
+            <button class="theme-btn" data-theme="midnight">🌌</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="vs/loader.js"></script>
+  <script src="renderer.js"></script>
+</body>
+  </html>
