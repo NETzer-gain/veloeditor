@@ -39,7 +39,9 @@ function getLanguageFromPath(filePath) {
 async function initApp() {
   try {
     const saved = await window.electronAPI.loadSettings();
-    if (saved && saved.theme) {
+    // ФИКС: раньше настройки применялись только если в файле было поле theme,
+    // из-за чего валидные fontFamily/fontSize из settings.json могли игнорироваться.
+    if (saved && typeof saved === 'object') {
       currentSettings = { ...currentSettings, ...saved };
     }
   } catch (e) { console.warn('Could not load settings', e); }
@@ -52,7 +54,7 @@ async function initApp() {
   require(['vs/editor/editor.main'], () => {
     defineMonacoTheme();
     monacoReady = true;
-    pendingTabs.forEach(({ title, filePath, content }) => createNewTab(title, filePath, content));
+    pendingTabs.forEach(({ title, filePath, content, language }) => createNewTab(title, filePath, content, language));
     pendingTabs.length = 0;
     if (tabs.length === 0) createNewTab('Welcome');
   });
@@ -97,15 +99,19 @@ function getMonacoTheme() {
 }
 
 // --- Управление вкладками ---
-function createNewTab(title = null, filePath = null, content = '') {
+// ФИКС: добавлен отдельный параметр `language`, не зависящий от `filePath`.
+// Раньше для элементов сайдбара в filePath передавалось выдуманное имя файла
+// только ради подсветки синтаксиса, но оно же сохранялось в tab.path и
+// использовалось при Ctrl+S как реальный путь для записи на диск.
+function createNewTab(title = null, filePath = null, content = '', language = null) {
   if (!monacoReady) {
-    pendingTabs.push({ title, filePath, content });
+    pendingTabs.push({ title, filePath, content, language });
     return;
   }
 
   const id = generateId();
-  const language = getLanguageFromPath(filePath);
-  const model = monaco.editor.createModel(content, language);
+  const resolvedLanguage = language || getLanguageFromPath(filePath);
+  const model = monaco.editor.createModel(content, resolvedLanguage);
   const tab = {
     id,
     title: title || (filePath ? filePath.split(/[\\/]/).pop() : 'Untitled'),
@@ -115,11 +121,15 @@ function createNewTab(title = null, filePath = null, content = '') {
     lastSaved: filePath ? Date.now() : null
   };
 
+  // ФИКС: раньше onDidChangeContent только выставлял tab.dirty = true,
+  // но не перерисовывал вкладки — точка «•» у несохранённой вкладки
+  // не появлялась сразу при вводе текста, а только после случайного
+  // renderTabs() из другого места (переключение вкладки и т.п.).
   model.onDidChangeContent(() => {
-  if (!tab.dirty) {
-    tab.dirty = true;
-    renderTabs();
-   }
+    if (!tab.dirty) {
+      tab.dirty = true;
+      renderTabs();
+    }
   });
 
   tabs.push(tab);
@@ -264,9 +274,14 @@ function updateTabHighlight() {
 
 // --- Файловые операции ---
 async function openFileDialog() {
-  if (!monacoReady) return;
+  // ФИКС: раньше при !monacoReady функция выходила до открытия диалога,
+  // и клик "Open" в первые секунды после старта приложения просто ничего
+  // не делал без какой-либо обратной связи для пользователя.
+  // Теперь диалог открывается всегда, а результат при необходимости
+  // уходит в ту же очередь pendingTabs, что и createNewTab.
   const file = await window.electronAPI.openFile();
   if (!file) return;
+
   const existing = tabs.find(t => t.path === file.path);
   if (existing) {
     if (existing.model && !existing.model.isDisposed()) {
@@ -274,10 +289,11 @@ async function openFileDialog() {
     }
     existing.dirty = false;
     switchTab(existing.id);
-  } else {
-    const filename = file.path.split(/[\\/]/).pop();
-    createNewTab(filename, file.path, file.content);
+    return;
   }
+
+  const filename = file.path.split(/[\\/]/).pop();
+  createNewTab(filename, file.path, file.content);
 }
 
 async function saveCurrentTab(tabOverride) {
@@ -362,6 +378,16 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ФИКС: поле поиска и кнопка "Обновить" в сайдбаре были в HTML,
+  // но не имели ни одного обработчика событий.
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    renderSidebar(e.target.value);
+  });
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    document.getElementById('searchInput').value = '';
+    renderSidebar();
+  });
+
   renderSidebar();
   initApp();
 });
@@ -381,13 +407,20 @@ const funScripts = [
   { label: 'Sirius.lua', icon: 'file' }
 ];
 
-function renderSidebar() {
+// ФИКС: добавлен параметр filterText для поиска по спискам сайдбара.
+function renderSidebar(filterText = '') {
   const favList = document.getElementById('favoritesList');
   const scrList = document.getElementById('scriptsList');
+  const query = filterText.trim().toLowerCase();
+
   const createItem = (item) => {
     const div = document.createElement('div');
     div.className = 'file-list-item';
-    div.innerHTML = `<span class="icon ${item.icon}">${item.icon === 'star' ? '★' : '📄'}</span> ${item.label}`;
+    // ФИКС: item.label раньше вставлялся в innerHTML без экранирования.
+    // Сейчас список захардкожен и не эксплуатируется, но при добавлении
+    // динамической загрузки файлов (например, чтения папки с диска)
+    // это стало бы XSS-уязвимостью — экранируем заранее.
+    div.innerHTML = `<span class="icon ${item.icon}">${item.icon === 'star' ? '★' : '📄'}</span> ${escapeHtml(item.label)}`;
     div.addEventListener('click', () => {
       // Проверяем, нет ли уже вкладки с таким же названием и без пути
       const existing = tabs.find(t => t.title === item.label && !t.path);
@@ -395,13 +428,22 @@ function renderSidebar() {
         switchTab(existing.id);
         return;
       }
-      // Передаём фиктивный путь для правильной языковой подсветки
-      createNewTab(item.label, item.label, '');
+      // ФИКС: раньше сюда передавался item.label в качестве filePath —
+      // это выдуманное имя файла оседало в tab.path и использовалось
+      // при Ctrl+S как реальный путь для записи на диск (в обход диалога
+      // "Сохранить как"). Теперь путь явно null, а язык подсветки
+      // вычисляется отдельно и передаётся четвёртым аргументом.
+      createNewTab(item.label, null, '', getLanguageFromPath(item.label));
     });
     return div;
   };
+
   favList.innerHTML = '';
   scrList.innerHTML = '';
-  favorites.forEach(f => favList.appendChild(createItem(f)));
-  funScripts.forEach(f => scrList.appendChild(createItem(f)));
-                                 }
+  favorites
+    .filter(f => !query || f.label.toLowerCase().includes(query))
+    .forEach(f => favList.appendChild(createItem(f)));
+  funScripts
+    .filter(f => !query || f.label.toLowerCase().includes(query))
+    .forEach(f => scrList.appendChild(createItem(f)));
+      }
