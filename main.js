@@ -126,6 +126,7 @@ function registerIpcHandlers() {
         type: 'question',
         buttons: ["Don't save", 'Cancel', 'Save'],
         defaultId: 2,
+        cancelId: 1
         title: 'Unsaved changes',
         message: 'You have unsaved changes. Do you want to save before closing?'
       });
