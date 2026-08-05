@@ -1,0 +1,39 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # позволяет запускать вручную
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Copy Monaco files (if postinstall didn't work)
+        run: |
+          if not exist "renderer\vs" (
+            xcopy /E /I node_modules\monaco-editor\min\vs renderer\vs
+          )
+
+      - name: Build executable
+        run: npx electron-builder --win portable --x64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Velocity-Text-Editor-Windows
+          path: dist/*.exe
