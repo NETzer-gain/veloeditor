@@ -116,7 +116,10 @@ function createNewTab(title = null, filePath = null, content = '') {
   };
 
   model.onDidChangeContent(() => {
+  if (!tab.dirty) {
     tab.dirty = true;
+    renderTabs();
+   }
   });
 
   tabs.push(tab);
