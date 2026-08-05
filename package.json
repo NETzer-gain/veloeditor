@@ -1,0 +1,32 @@
+{
+  "name": "velocity-text-editor",
+  "version": "1.0.1",
+  "description": "Desktop text editor in Velocity style",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "postinstall": "node -e \"const fs=require('fs');const src='node_modules/monaco-editor/min/vs';const dest='renderer/vs';if(!fs.existsSync(dest)){fs.cpSync(src,dest,{recursive:true});console.log('Copied Monaco editor files');}\""
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "monaco-editor": "^0.45.0"
+  },
+  "build": {
+    "appId": "com.velocity.editor",
+    "productName": "Velocity Text Editor",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": { "icon": "icon.ico" },
+    "mac": { "icon": "icon.icns" },
+    "linux": { "icon": "icon.png" }
+  }
+}
