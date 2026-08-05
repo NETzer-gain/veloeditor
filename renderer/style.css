@@ -1,0 +1,347 @@
+:root {
+  --bg-main: #111111;
+  --bg-sidebar: #1a1a1a;
+  --bg-toolbar: #1e1e1e;
+  --bg-tab: #252525;
+  --bg-tab-active: #1a1a1a;
+  --text: #cccccc;
+  --text-secondary: #888888;
+  --accent: #0078d4;
+  --border: #2d2d2d;
+  --hover: #2a2a2a;
+  --btn-hover: #333333;
+  --danger: #e81123;
+}
+
+body.theme-light {
+  --bg-main: #ffffff;
+  --bg-sidebar: #f3f3f3;
+  --bg-toolbar: #f0f0f0;
+  --bg-tab: #e5e5e5;
+  --bg-tab-active: #ffffff;
+  --text: #1e1e1e;
+  --text-secondary: #555555;
+  --accent: #005a9e;
+  --border: #cccccc;
+  --hover: #e8e8e8;
+  --btn-hover: #dddddd;
+}
+
+body.theme-midnight {
+  --bg-main: #202225;
+  --bg-sidebar: #2f3136;
+  --bg-toolbar: #292b2f;
+  --bg-tab: #2f3136;
+  --bg-tab-active: #202225;
+  --text: #c3cee8;
+  --text-secondary: #72767d;
+  --accent: #5865f2;
+  --border: #40444b;
+  --hover: #3c3f45;
+  --btn-hover: #45494f;
+  background: linear-gradient(330deg, #202225 10%, #5865f2 30%, #2f3136 60%) fixed;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  background: var(--bg-main);
+}
+
+body.theme-midnight .workspace {
+  background: transparent;
+}
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: #111111;
+  border-bottom: 1px solid #2d2d2d;
+  -webkit-app-region: drag;
+  padding: 0 8px;
+  z-index: 999;
+}
+
+.title-bar-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+  color: var(--accent);
+}
+
+.title-bar-text {
+  flex: 1;
+  font-size: 12px;
+  text-align: center;
+  color: #999;
+}
+
+.title-bar-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar-controls button {
+  background: none;
+  border: none;
+  color: #aaa;
+  width: 32px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.title-bar-controls button:hover {
+  background: #333;
+}
+
+#closeBtn:hover {
+  background: #e81123;
+  color: white;
+}
+
+.app-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 240px;
+  min-width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-search {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+
+.sidebar-search input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.sidebar-search input::placeholder {
+  color: var(--text-secondary);
+}
+
+.sidebar-search .search-icon,
+.sidebar-search .refresh-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.sidebar-section {
+  padding: 8px 0;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  margin-top: 4px;
+}
+
+.file-list {
+  list-style: none;
+}
+
+.file-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.file-list-item:hover {
+  background: var(--hover);
+}
+
+.file-list-item .icon {
+  width: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.file-list-item .icon.star {
+  color: #ffd700;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-main);
+}
+
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border);
+  height: 36px;
+  padding-right: 4px;
+}
+
+.tabs-container {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+  height: 100%;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tab);
+  padding: 0 12px;
+  font-size: 13px;
+  border-right: 1px solid var(--border);
+  height: 100%;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--bg-tab-active);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tab .close-tab {
+  margin-left: 8px;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.tab .close-tab:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.new-tab-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.new-tab-btn:hover {
+  background: var(--btn-hover);
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 14px;
+  gap: 8px;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+.action-toolbar {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background: var(--bg-toolbar);
+  border-top: 1px solid var(--border);
+  padding: 0 8px;
+  gap: 8px;
+}
+
+.toolbar-left,
+.toolbar-center,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.action-toolbar button,
+.action-toolbar select {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-toolbar button:hover,
+.action-toolbar select:hover {
+  background: var(--btn-hover);
+}
+
+.theme-btn {
+  padding: 2px 6px !important;
+}
