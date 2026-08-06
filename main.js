@@ -116,6 +116,14 @@ function registerIpcHandlers() {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
 
+    // ФИКС: рендерер ответил вовремя — форс-таймер из mainWindow.on('close')
+    // больше не нужен, иначе он мог бы закрыть окно спустя 5 секунд даже
+    // после того, как пользователь нажал "Cancel".
+    if (win._forceCloseTimer) {
+      clearTimeout(win._forceCloseTimer);
+      win._forceCloseTimer = null;
+    }
+
     const doClose = () => {
       win._closingConfirmed = true;
       win.close();
@@ -126,7 +134,7 @@ function registerIpcHandlers() {
         type: 'question',
         buttons: ["Don't save", 'Cancel', 'Save'],
         defaultId: 2,
-        cancelId: 1
+        cancelId: 1,
         title: 'Unsaved changes',
         message: 'You have unsaved changes. Do you want to save before closing?'
       });
@@ -148,6 +156,22 @@ function registerIpcHandlers() {
     if (win) {
       win._closingConfirmed = true;
       win.close();
+    }
+  });
+}
+
+// ФИКС: без блокировки единственного экземпляра каждый повторный запуск
+// .exe (например, если предыдущее окно зависло и не закрылось) создавал
+// ещё один процесс приложения поверх старого — отсюда рост числа
+// "служб" в диспетчере задач при каждом открытии.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
 }
@@ -180,6 +204,21 @@ function createWindow() {
   mainWindow.on('close', (e) => {
     if (mainWindow._closingConfirmed) return;
     e.preventDefault();
+
+    // ФИКС: если рендерер по какой-то причине не ответит на
+    // app:query-unsaved (упал с JS-ошибкой, завис, DevTools закрыт
+    // в неудачный момент и т.п.), окно раньше оставалось открытым
+    // навсегда — preventDefault() уже сработал, а ответа так и не
+    // будет. Пользователь в такой ситуации обычно просто запускал
+    // .exe ещё раз, и зависший процесс оставался в диспетчере задач.
+    // Теперь через 5 секунд без ответа мы закрываем окно принудительно.
+    const forceCloseTimer = setTimeout(() => {
+      console.warn('Renderer did not respond to app:query-unsaved in time, forcing close.');
+      mainWindow._closingConfirmed = true;
+      mainWindow.close();
+    }, 5000);
+    mainWindow._forceCloseTimer = forceCloseTimer;
+
     mainWindow.webContents.send('app:query-unsaved');
   });
 
@@ -195,6 +234,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
   registerIpcHandlers();
   createWindow();
 });
