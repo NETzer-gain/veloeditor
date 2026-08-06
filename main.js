@@ -78,6 +78,19 @@ function registerIpcHandlers() {
     }
   });
 
+  // Чтение файла по известному пути (используется списком "Недавние" в сайдбаре —
+  // без нативного диалога выбора файла)
+  ipcMain.handle('file:readPath', async (event, filePath) => {
+    if (!filePath) return null;
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { path: filePath, content };
+    } catch (err) {
+      console.error('Read error:', err);
+      return null;
+    }
+  });
+
   // Настройки
   ipcMain.handle('settings:load', async () => {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json');
