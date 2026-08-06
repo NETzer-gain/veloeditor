@@ -23,12 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Copy Monaco files (if postinstall didn't work)
-        run: |
-          if not exist "renderer\vs" (
-            xcopy /E /I node_modules\monaco-editor\min\vs renderer\vs
-          )
-
       - name: Build executable
         run: npx electron-builder --win portable --x64
 
