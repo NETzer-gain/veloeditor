@@ -7,7 +7,7 @@
     "start": "electron .",
     "build": "electron-builder --win portable",
     "pack": "electron-builder --dir",
-    "postinstall": "node -e \"const fs=require('fs');const src='node_modules/monaco-editor/min/vs';const dest='renderer/vs';if(!fs.existsSync(dest)){fs.cpSync(src,dest,{recursive:true});console.log('Copied Monaco editor files');}\""
+    "postinstall": "node -e \"const fs=require('fs');const src='node_modules/monaco-editor/min/vs';const dest='renderer/vs';if(fs.existsSync(dest)){fs.rmSync(dest,{recursive:true,force:true});}fs.cpSync(src,dest,{recursive:true});console.log('Copied Monaco editor files');\""
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -20,8 +20,7 @@
     "files": [
       "main.js",
       "preload.js",
-      "renderer/**",
-      "node_modules/monaco-editor/min/vs/**"
+      "renderer/**"
     ],
     "directories": {
       "output": "dist"
