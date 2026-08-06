@@ -6,7 +6,8 @@ let activeTabId = null;
 let currentSettings = {
   theme: 'dark',
   fontFamily: 'Consolas',
-  fontSize: 14
+  fontSize: 14,
+  recentFiles: []
 };
 let removeMaximizeListener = null;
 
@@ -45,6 +46,12 @@ async function initApp() {
       currentSettings = { ...currentSettings, ...saved };
     }
   } catch (e) { console.warn('Could not load settings', e); }
+
+  // Список недавних файлов подгружается асинхронно вместе с настройками —
+  // перерисовываем сайдбар, чтобы он отразил уже загруженный список
+  // (при первом вызове в DOMContentLoaded currentSettings.recentFiles
+  // ещё пуст по умолчанию).
+  renderSidebar();
 
   document.body.className = `theme-${currentSettings.theme}`;
   document.getElementById('fontSelect').value = currentSettings.fontFamily;
@@ -102,7 +109,15 @@ function defineMonacoTheme() {
     inherit: true,
     rules: [{ token: '', foreground: '#c3cee8' }],
     colors: {
-      'editor.background': '#202225',
+      // ФИКС: было '#202225' (непрозрачный) — Monaco рисовал этим цветом
+      // сплошной фон поверх всего editor-container, из-за чего градиент,
+      // заданный на body.theme-midnight в style.css, был полностью
+      // перекрыт и никогда не показывался. Прозрачный фон (+ прозрачный
+      // левый margin с номерами строк) позволяет градиенту проступать
+      // сквозь область редактора.
+      'editor.background': '#20222500',
+      'editorGutter.background': '#00000000',
+      'minimap.background': '#20222500',
       'editor.foreground': '#c3cee8',
       'editor.lineHighlightBackground': '#2f3136',
       'editor.selectionBackground': '#5865f2',
@@ -291,6 +306,16 @@ function updateTabHighlight() {
   }
 }
 
+// --- Недавние файлы ---
+function addRecentFile(filePath) {
+  if (!filePath) return;
+  const list = (currentSettings.recentFiles || []).filter(f => f.path !== filePath);
+  list.unshift({ path: filePath, timestamp: Date.now() });
+  currentSettings.recentFiles = list.slice(0, 20); // ограничиваем длину списка
+  window.electronAPI.saveSettingsSync(currentSettings);
+  renderSidebar(document.getElementById('searchInput').value);
+}
+
 // --- Файловые операции ---
 async function openFileDialog() {
   // ФИКС: раньше при !monacoReady функция выходила до открытия диалога,
@@ -308,11 +333,13 @@ async function openFileDialog() {
     }
     existing.dirty = false;
     switchTab(existing.id);
+    addRecentFile(file.path);
     return;
   }
 
   const filename = file.path.split(/[\\/]/).pop();
   createNewTab(filename, file.path, file.content);
+  addRecentFile(file.path);
 }
 
 async function saveCurrentTab(tabOverride) {
@@ -327,6 +354,7 @@ async function saveCurrentTab(tabOverride) {
       tab.dirty = false;
       tab.lastSaved = Date.now();
       renderTabs();
+      addRecentFile(tab.path);
       return true;
     }
     return false;
@@ -338,6 +366,7 @@ async function saveCurrentTab(tabOverride) {
       tab.dirty = false;
       tab.lastSaved = Date.now();
       renderTabs();
+      addRecentFile(newPath);
       return true;
     }
     return false;
@@ -416,53 +445,53 @@ window.addEventListener('beforeunload', () => {
   if (removeMaximizeListener) removeMaximizeListener();
 });
 
-// --- Сайдбар ---
-const favorites = [
-  { label: 'Dark Dex.lua', icon: 'star' },
-  { label: 'Hydroxide.lua', icon: 'star' }
-];
-const funScripts = [
-  { label: 'Infinite Yield FE.lua', icon: 'file' },
-  { label: 'Sirius.lua', icon: 'file' }
-];
-
-// ФИКС: добавлен параметр filterText для поиска по спискам сайдбара.
+// --- Сайдбар (недавние файлы) ---
+// ФИКС: раньше здесь были захардкоженные списки FAVOURITES/FUN SCRIPTS
+// с несуществующими файлами (Dark Dex.lua и т.п.). Теперь это список
+// реально недавно открытых/сохранённых файлов, который пополняется из
+// addRecentFile() и хранится в settings.json через currentSettings.recentFiles.
 function renderSidebar(filterText = '') {
-  const favList = document.getElementById('favoritesList');
-  const scrList = document.getElementById('scriptsList');
+  const list = document.getElementById('recentList');
+  if (!list) return;
   const query = filterText.trim().toLowerCase();
+  const recentFiles = currentSettings.recentFiles || [];
+  const filtered = recentFiles.filter(entry => !query || entry.path.toLowerCase().includes(query));
 
-  const createItem = (item) => {
+  list.innerHTML = '';
+
+  if (filtered.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'file-list-item';
+    empty.style.cursor = 'default';
+    empty.style.color = 'var(--text-secondary)';
+    empty.textContent = query ? 'Nothing found' : 'No recent files yet';
+    list.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(entry => {
+    const filename = entry.path.split(/[\\/]/).pop();
     const div = document.createElement('div');
     div.className = 'file-list-item';
-    // ФИКС: item.label раньше вставлялся в innerHTML без экранирования.
-    // Сейчас список захардкожен и не эксплуатируется, но при добавлении
-    // динамической загрузки файлов (например, чтения папки с диска)
-    // это стало бы XSS-уязвимостью — экранируем заранее.
-    div.innerHTML = `<span class="icon ${item.icon}">${item.icon === 'star' ? '★' : '📄'}</span> ${escapeHtml(item.label)}`;
-    div.addEventListener('click', () => {
-      // Проверяем, нет ли уже вкладки с таким же названием и без пути
-      const existing = tabs.find(t => t.title === item.label && !t.path);
-      if (existing) {
-        switchTab(existing.id);
+    div.innerHTML = `<span class="icon file">📄</span> <span title="${escapeHtml(entry.path)}">${escapeHtml(filename)}</span>`;
+    div.addEventListener('click', async () => {
+      const existingTab = tabs.find(t => t.path === entry.path);
+      if (existingTab) {
+        switchTab(existingTab.id);
         return;
       }
-      // ФИКС: раньше сюда передавался item.label в качестве filePath —
-      // это выдуманное имя файла оседало в tab.path и использовалось
-      // при Ctrl+S как реальный путь для записи на диск (в обход диалога
-      // "Сохранить как"). Теперь путь явно null, а язык подсветки
-      // вычисляется отдельно и передаётся четвёртым аргументом.
-      createNewTab(item.label, null, '', getLanguageFromPath(item.label));
+      const file = await window.electronAPI.readPath(entry.path);
+      if (!file) {
+        // Файл, вероятно, удалён/перемещён — убираем его из списка недавних
+        currentSettings.recentFiles = (currentSettings.recentFiles || []).filter(f => f.path !== entry.path);
+        window.electronAPI.saveSettingsSync(currentSettings);
+        renderSidebar(document.getElementById('searchInput').value);
+        alert(`Could not open file, it may have been moved or deleted:\n${entry.path}`);
+        return;
+      }
+      createNewTab(filename, entry.path, file.content);
+      addRecentFile(entry.path); // поднимаем в начало списка недавних
     });
-    return div;
-  };
-
-  favList.innerHTML = '';
-  scrList.innerHTML = '';
-  favorites
-    .filter(f => !query || f.label.toLowerCase().includes(query))
-    .forEach(f => favList.appendChild(createItem(f)));
-  funScripts
-    .filter(f => !query || f.label.toLowerCase().includes(query))
-    .forEach(f => scrList.appendChild(createItem(f)));
+    list.appendChild(div);
+  });
 }
