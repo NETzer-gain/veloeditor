@@ -70,11 +70,30 @@ async function initApp() {
   });
 
   window.electronAPI.onDoSaveAndClose(async () => {
-    const success = await saveCurrentTab();
+    // ФИКС: раньше сохранялась только активная вкладка (saveCurrentTab()
+    // без аргумента), хотя проверка hasUnsaved смотрит на ВСЕ вкладки.
+    // Если несохранённые изменения были в неактивной вкладке, они молча
+    // терялись при закрытии приложения. Теперь сохраняем все "грязные"
+    // вкладки по очереди.
+    const success = await saveAllDirtyTabs();
     if (success) {
       window.electronAPI.notifySaveDoneClose();
     }
   });
+}
+
+// ФИКС: новая функция — сохраняет все вкладки с несохранёнными
+// изменениями (а не только текущую активную). Останавливается и
+// возвращает false, если сохранение какой-то вкладки не удалось
+// (например, пользователь отменил диалог "Save As") — в этом случае
+// приложение не закроется, и пользователь сможет попробовать снова.
+async function saveAllDirtyTabs() {
+  const dirtyTabs = tabs.filter(t => t.dirty);
+  for (const tab of dirtyTabs) {
+    const success = await saveCurrentTab(tab);
+    if (!success) return false;
+  }
+  return true;
 }
 
 function defineMonacoTheme() {
@@ -446,4 +465,4 @@ function renderSidebar(filterText = '') {
   funScripts
     .filter(f => !query || f.label.toLowerCase().includes(query))
     .forEach(f => scrList.appendChild(createItem(f)));
-      }
+}
