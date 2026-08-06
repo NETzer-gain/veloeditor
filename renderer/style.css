@@ -39,6 +39,11 @@ body.theme-midnight {
   --border: #40444b;
   --hover: #3c3f45;
   --btn-hover: #45494f;
+  /* Градиент 10/30/60 из угла снизу-справа к середине верхней границы.
+     ФИКС: раньше был не виден — Monaco рисовал поверх непрозрачный
+     editor.background (#202225), полностью закрывая этот градиент.
+     Теперь фон редактора в теме midnight-custom прозрачный (см.
+     renderer.js → defineMonacoTheme), и градиент проступает сквозь него. */
   background: linear-gradient(330deg, #202225 10%, #5865f2 30%, #2f3136 60%) fixed;
 }
 
@@ -344,4 +349,4 @@ body.theme-midnight .workspace {
 
 .theme-btn {
   padding: 2px 6px !important;
-}
+  }
