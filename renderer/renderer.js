@@ -152,16 +152,22 @@ function createNewTab(title = null, filePath = null, content = '', language = nu
     path: filePath,
     model,
     dirty: false,
+    savedContent: content, // базовое содержимое для сравнения (последнее открытое/сохранённое)
     lastSaved: filePath ? Date.now() : null
   };
 
-  // ФИКС: раньше onDidChangeContent только выставлял tab.dirty = true,
-  // но не перерисовывал вкладки — точка «•» у несохранённой вкладки
-  // не появлялась сразу при вводе текста, а только после случайного
-  // renderTabs() из другого места (переключение вкладки и т.п.).
+  // ФИКС: раньше dirty был флагом "было хоть одно изменение" и никогда
+  // не сбрасывался обратно. Из-за этого, например, если что-то напечатать
+  // и затем полностью стереть (вернувшись к пустому файлу), вкладка
+  // всё равно считалась "грязной", и при закрытии приложение спрашивало
+  // про сохранение пустого файла. Теперь dirty — это сравнение текущего
+  // содержимого с последним сохранённым/открытым (savedContent): если
+  // текст вернулся к исходному состоянию (в том числе к пустому), точка
+  // "•" пропадает и предупреждение о несохранённых изменениях не всплывает.
   model.onDidChangeContent(() => {
-    if (!tab.dirty) {
-      tab.dirty = true;
+    const isDirtyNow = model.getValue() !== tab.savedContent;
+    if (isDirtyNow !== tab.dirty) {
+      tab.dirty = isDirtyNow;
       renderTabs();
     }
   });
@@ -194,6 +200,7 @@ async function closeTab(id, e) {
     tab.title = 'Untitled';
     tab.path = null;
     tab.dirty = false;
+    tab.savedContent = '';
     renderTabs();
     return;
   }
@@ -332,6 +339,7 @@ async function openFileDialog() {
       existing.model.setValue(file.content);
     }
     existing.dirty = false;
+    existing.savedContent = file.content;
     switchTab(existing.id);
     addRecentFile(file.path);
     return;
@@ -352,6 +360,7 @@ async function saveCurrentTab(tabOverride) {
     const success = await window.electronAPI.saveToPath(tab.path, content);
     if (success) {
       tab.dirty = false;
+      tab.savedContent = content;
       tab.lastSaved = Date.now();
       renderTabs();
       addRecentFile(tab.path);
@@ -364,6 +373,7 @@ async function saveCurrentTab(tabOverride) {
       tab.path = newPath;
       tab.title = newPath.split(/[\\/]/).pop();
       tab.dirty = false;
+      tab.savedContent = content;
       tab.lastSaved = Date.now();
       renderTabs();
       addRecentFile(newPath);
@@ -408,12 +418,14 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fontSelect').addEventListener('change', (e) => {
     currentSettings.fontFamily = e.target.value;
     if (monacoEditor) monacoEditor.updateOptions({ fontFamily: e.target.value });
+    window.electronAPI.saveSettingsSync(currentSettings);
   });
   document.getElementById('sizeSelect').addEventListener('change', (e) => {
     const size = Number(e.target.value);
     if (Number.isFinite(size)) {
       currentSettings.fontSize = size;
       if (monacoEditor) monacoEditor.updateOptions({ fontSize: size });
+      window.electronAPI.saveSettingsSync(currentSettings);
     }
   });
 
@@ -423,6 +435,13 @@ window.addEventListener('DOMContentLoaded', () => {
       document.body.className = `theme-${theme}`;
       currentSettings.theme = theme;
       if (monacoEditor) monaco.editor.setTheme(getMonacoTheme());
+      // ФИКС: раньше настройки сохранялись только один раз, в обработчике
+      // beforeunload при закрытии окна. У нашего кастомного flow закрытия
+      // (main.js перехватывает close, спрашивает про несохранённые изменения,
+      // потом ещё раз вызывает win.close()) beforeunload срабатывает
+      // ненадёжно — тема после перезапуска не подхватывалась. Теперь
+      // сохраняем сразу при выборе темы, не дожидаясь закрытия окна.
+      window.electronAPI.saveSettingsSync(currentSettings);
     });
   });
 
@@ -494,4 +513,4 @@ function renderSidebar(filterText = '') {
     });
     list.appendChild(div);
   });
-}
+    }
