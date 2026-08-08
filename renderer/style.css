@@ -46,7 +46,7 @@ body.theme-midnight {
      вниз, а не прямую черту. Чтобы дуга не обрывалась на границе
      сайдбара, сайдбар для этой темы тоже сделан прозрачным (см. ниже) —
      градиент продолжается под ним, будто рисуется на всём окне целиком. */
-  background: radial-gradient(ellipse at 0% 0%, #202225 10%, #5865f2 30%, #2f3136 60%) fixed;
+  background: radial-gradient(ellipse at 200% 200%, #202225 10%, #4B0082 30%, #2f3136 60%) fixed;
 }
 
 body.theme-midnight .sidebar {
