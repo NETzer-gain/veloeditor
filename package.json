@@ -1,7 +1,7 @@
 {
-  "name": "velocity-text-editor",
+  "name": "veloeditor",
   "version": "1.0.1",
-  "description": "Desktop text editor in Velocity style",
+  "description": "text editor in Velocity style",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
